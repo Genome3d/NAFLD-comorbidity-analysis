@@ -1,0 +1,9 @@
+local\
+__pycache__/
+*.py[cod]
+*$py.class
+.cache
+*~
+local/
+.DS_Store
+._.DS_Store
