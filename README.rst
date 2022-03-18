@@ -1,4 +1,4 @@
-NAFLD - multimorbidy analysis
+NAFLD - comorbidity analysis
 =============================
 
 This repository contains data, analysis and visualization scripts used for the preparation of the manuscript - **Deciphering the genetic links between NAFLD and co-occurring conditions using a liver gene regulatory network**. Here, we constructed a liver-specific gene regulatory network consisting of genome-wide spatially constrained expression quantitative trait loci (eQTL) and their target genes, which was used to investigate shared genetic mechanisms underlying NAFLD multimorbidities.
