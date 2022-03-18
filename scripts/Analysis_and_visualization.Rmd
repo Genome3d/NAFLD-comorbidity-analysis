@@ -1,0 +1,1230 @@
+---
+title: "Figures_NAFLD_research"
+author: "Sreemol Gokuladhas"
+date: "17/03/2022"
+output: html_document
+---
+
+#### Figure 1A
+```{r}
+
+library(data.table)
+
+## Read LGRN file
+
+lgrn <- fread("../results/significant_eqtls_liver_fdr_recalculated.txt",
+              sep = "\t", header = T)
+
+## subset snp and gene column
+
+eqtl_egene_pairs <- lgrn %>% dplyr::select(snp, gene) %>% unique()
+
+## Find number of genes regulated by each snp
+
+gene_aggr <- eqtl_egene_pairs %>% group_by(snp) %>% 
+  dplyr::summarise(genes = paste(sort(unique(gene)), collapse=","))
+
+
+gene_aggr_len <- eqtl_egene_pairs %>% group_by(snp) %>% 
+  dplyr::summarise(genes_col_length = as.numeric(paste(length(unique(gene)), collapse=",")))
+
+# merge above two data frames
+
+gene_aggr_len_combined <- merge(gene_aggr, gene_aggr_len, by = "snp")
+
+## Find number of snps regulate 1,2,3,4... genes
+
+snp_len <- gene_aggr_len_combined %>% group_by(genes_col_length) %>% 
+  dplyr::summarise(No_of_reg_eqtls = paste(length(unique(snp))))
+
+## Plot number of genes regulated vs no of eqtls
+
+snp_len_df <- data.frame("No_of_connections" = c("One target gene", ">1 target genes"),
+                         "No_of_eQTLs" = c(249576, 77569))
+
+## calculate proportion of eqtls
+
+snp_len_df_prop <- snp_len_df %>% 
+  mutate(prop = No_of_eQTLs / sum(No_of_eQTLs))
+
+
+#pdf("../plots/figure1a.pdf",height = 3,width = 3)
+ggplot(snp_len_df_prop, aes(factor(No_of_connections, levels = c("One target gene", ">1 target genes")),
+                            prop, 
+                            fill = factor(No_of_connections, 
+                                          levels = c("One target gene", ">1 target genes")))) +
+  geom_bar(stat = "identity", width = 0.6, alpha = 0.9) +
+  geom_text(aes(label= paste0("N=", No_of_eQTLs)), position=position_dodge(width=0.8), 
+            vjust=-0.25, size = 3) +
+  labs(x = "", y = "Proportion of eQTLs in the LGRN") +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"), limits = c(0,0.8),
+                     breaks = seq(0,1,by=0.10), expand = c(0.01,0)) +
+  scale_fill_manual(values = c("#BCBEC0", "#676767"))+
+  theme_classic() +
+  theme(legend.position = "none",
+        axis.text = element_text(size = 9),
+        axis.title = element_text(size = 10),
+        #legend.text = element_text(size = 7),
+        #legend.title = element_text(size = 8, face = "bold"),
+        axis.line = element_line(size = 0.25, colour = "black"),
+        axis.ticks = element_line(size = 0.25, colour = "black"))
+#dev.off()
+```
+
+## Supplementary figure 1A
+```{r}
+
+## Read GTEx cis eqtl file
+
+gtex <- fread("../data/Liver.v8.signif_variant_gene_pairs_short_with_ids.txt",
+              header = T, sep = "\t")
+
+names(gtex)[4] <- "snp"
+
+## Subset snp and gene column 
+
+library(tidyverse)
+
+gtex_eqtl_gene_pairs <- gtex %>% filter(!snp %like% "," & snp != ".") %>%
+  dplyr::select(snp, gene) %>% unique()
+
+## Find number of genes regulated by each snp
+
+gtex_gene_aggr <- gtex_eqtl_gene_pairs %>% group_by(snp) %>% 
+  dplyr::summarise(genes = paste(sort(unique(gene)), collapse=","))
+
+
+gtex_gene_aggr_len <- gtex_eqtl_gene_pairs %>% group_by(snp) %>% 
+  dplyr::summarise(genes_col_length = paste(length(unique(gene)), collapse=","))
+
+# merge above two data frames
+
+gtex_gene_aggr_len_combined <- merge(gtex_gene_aggr, gtex_gene_aggr_len, by = "snp")
+
+## Find number of snps regulate 1,2,3,4... genes
+
+gtex_snp_len <- gtex_gene_aggr_len_combined %>% group_by(genes_col_length) %>%
+  dplyr::summarise(No_of_reg_eqtls = paste(length(unique(snp))))
+
+## Plot number of genes regulated vs no of eqtls
+
+gtex_snp_len_df <- data.frame("No_of_connections" = c("One target gene", "Multiple target genes"),
+                         "No_of_eQTLs" = c(298214, 108776))
+
+## calculate proportion of eqtls
+                      
+gtex_snp_len_df_prop <- gtex_snp_len_df %>% 
+  mutate(prop = No_of_eQTLs / sum(No_of_eQTLs))
+
+#pdf("../plots/supfig1a.pdf", height = 3, width = 3)
+ggplot(gtex_snp_len_df_prop, 
+       aes(factor(No_of_connections, levels = c("One target gene", "Multiple target genes")), prop,
+           fill = factor(No_of_connections, 
+                         levels = c("One target gene", "Multiple target genes")))) +
+  geom_bar(stat = "identity", width = 0.6, alpha = 0.9) +
+  geom_text(aes(label= paste0("N=", No_of_eQTLs)), position=position_dodge(width=0.6), 
+            vjust=-0.25, size = 3) +
+  labs(x = "", y = "Proportion of GTEx cis-eQTLs") +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"), limits = c(0,0.8),
+                     breaks = seq(0,1,by=0.10), expand = c(0.01,0)) +
+  scale_fill_manual(values = c("#BCBEC0", "#676767"))+
+  theme_classic() +
+  theme(legend.position = "None",
+        axis.line = element_line(size = 0.25),
+        axis.ticks = element_line(size = 0.25),
+        axis.text = element_text(size = 8),
+        axis.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 8, face = "bold"))
+#dev.off()
+```
+
+## Supplementary figure 1B
+```{r}
+
+## interaction type of snps having only one target genes
+## 
+snp_1 <- gene_aggr_len_combined %>% filter(genes_col_length == 1)
+
+lgrn$interaction_type <- gsub("Trans-interchromosomal", "Trans", lgrn$interaction_type)
+lgrn$interaction_type <- gsub("Trans-intrachromosomal", "Trans", lgrn$interaction_type)
+
+type_snp_1 <- lgrn %>% 
+  filter(snp %in% snp_1$snp) %>% 
+  dplyr::select(snp, interaction_type) %>% 
+  unique()
+
+type_1_snp_aggr_type <- aggregate(interaction_type ~ snp, type_snp_1,
+                                  function(x) paste0(sort(unique(x)), collapse = ","))
+
+type_1_snp_aggr_type$type_count <- table(type_1_snp_aggr_type$interaction_type)[type_1_snp_aggr_type$interaction_type]
+
+type_1_unique <- unique(type_1_snp_aggr_type[,c(2,3)]) %>% dplyr::mutate(prop = type_count/sum(type_count))
+
+type_1_unique$prop <- round((type_1_unique$prop)*100, 2)
+
+type_1_unique$cat <- "One target gene"
+
+## interaction type of snps having more than one target genes
+
+snp_more <- gene_aggr_len_combined %>% filter(genes_col_length > 1)
+
+type_more_snp <- lgrn %>% 
+  filter(snp %in% snp_more$snp) %>% 
+  dplyr::select(snp, interaction_type) %>% 
+  unique()
+
+type_more_snp_aggr_type <- aggregate(interaction_type ~ snp, type_more_snp,
+                                  function(x) paste0(sort(unique(x)), collapse = ","))
+
+type_more_snp_aggr_type$type_count <- table(type_more_snp_aggr_type$interaction_type)[type_more_snp_aggr_type$interaction_type]
+
+type_more_unique <- unique(type_more_snp_aggr_type[,c(2,3)]) %>% dplyr::mutate(prop = type_count/sum(type_count))
+
+type_more_unique$prop <- round((type_more_unique$prop)*100, 2)
+
+type_more_unique$cat <- ">1 target genes"
+
+# plot interaction types of SNPs with one and multiple target genes
+# 
+df <- rbind(type_1_unique, type_more_unique)
+
+df$cat <- factor(df$cat, c("One target gene", ">1 target genes"))
+
+#pdf("../plots/sup_fig1b.pdf", width = 4, height = 4)
+ggplot(df, aes(cat,prop,fill = interaction_type))+
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
+  geom_text(aes(label= paste0("N=", type_count)), position=position_dodge(width=0.6), 
+            vjust=-0.25, size = 3) +
+  labs(x = "", y = "Proportion of LGRN eQTLs") +
+  scale_y_continuous(labels = function(x) paste0(x, "%"), limits = c(0,100),
+                     breaks = seq(0,100,by=10), expand = c(0.01,0)) +
+  scale_fill_manual(values = c("#C9BEA9", "#9B8579", "#805230"), name = "Interaction type", 
+                  labels = c("Cis", "Cis and trans", "Trans"))+
+  theme_classic() +
+  theme(legend.position = "bottom",
+        axis.text = element_text(size = 8),
+        axis.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 8, face = "bold"),
+        axis.line = element_line(size = 0.25),
+        axis.ticks = element_line(size = 0.25))
+#dev.off()
+```
+
+## Supplementary figure 1C
+```{r}
+
+## Read LGRN file
+
+lgrn <- fread("../results/significant_eqtls_liver_fdr_recalculated.txt",
+              sep = "\t", header = T)
+
+lgrn_gene_type <- lgrn %>% dplyr::select(gene,interaction_type) %>% unique()
+
+lgrn_gene_type$interaction_type <- gsub("Trans-interchromosomal", "Trans", lgrn_gene_type$interaction_type)
+lgrn_gene_type$interaction_type <- gsub("Trans-intrachromosomal", "Trans", lgrn_gene_type$interaction_type)
+
+lgrn_gene_type_aggr <- aggregate(interaction_type ~ gene, lgrn_gene_type,
+                                  function(x) paste0(sort(unique(x)), collapse = ","))
+
+lgrn_gene_type_aggr$interaction_type <- gsub("Cis,Trans", "Cis and trans", lgrn_gene_type_aggr$interaction_type)
+
+lgrn_gene_type_aggr$type_count <- table(lgrn_gene_type_aggr$interaction_type)[lgrn_gene_type_aggr$interaction_type]
+
+lgrn_genetype_plot <- lgrn_gene_type_aggr %>%  dplyr::select(interaction_type, type_count) %>% 
+  unique()
+
+lgrn_genetype_plot <- lgrn_genetype_plot %>% mutate(prop = round(type_count/sum(type_count)*100,2))
+
+#pdf("../plots/sup_fig1c.pdf", width = 4, height = 4)
+ggplot(lgrn_genetype_plot, aes(interaction_type,prop,fill = interaction_type))+
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
+  geom_text(aes(label= paste0("N=", type_count)), position=position_dodge(width=0.6), 
+            vjust=-0.25, size = 3) +
+  labs(x = "", y = "Proportion of LGRN eQTL target genes") +
+  scale_y_continuous(labels = function(x) paste0(x, "%"), limits = c(0,55),
+                     breaks = seq(0,55,by=10), expand = c(0.01,0)) +
+  scale_fill_manual(values = c("#C9BEA9", "#9B8579", "#805230"))+
+  theme_classic() +
+  theme(legend.position = "none",
+        axis.text = element_text(size = 8, colour = "black"),
+        axis.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 8, face = "bold"),
+        axis.line = element_line(size = 0.25),
+        axis.ticks = element_line(size = 0.25))
+#dev.off
+```
+
+
+#### Figure 1B
+```{r}
+## download ensemble annotations for gene biotype
+
+library(biomaRt)
+
+ensembl <- useMart("ensembl", 
+                   host = "https://may2021.archive.ensembl.org", 
+                   dataset = "hsapiens_gene_ensembl")
+
+## Check that it is indeed GRCh38:
+
+searchDatasets(mart = ensembl, pattern = 'hsapiens')
+
+ensembl_biotypes <- getBM(attributes = c("hgnc_symbol","gene_biotype","ensembl_gene_id",
+                                         "ensembl_gene_id_version"), 
+                                #filters = "ensembl_gene_id_version", 
+                                values = "gene_biotype",
+                                mart=ensembl) 
+
+# write.table(ensembl_biotypes, "../results/ensembl_pro_coding_genes/ensembl_gene_biotypes.txt",
+#             sep = "\t", row.names = F, col.names = T, quote = F)
+
+## Load LGRN file
+
+lgrn <- fread("../results/significant_eqtls_liver_fdr_recalculated.txt",
+              sep = "\t", header = T)
+
+ensembl_biotypes <- fread("../results/ensembl_gene_biotypes.txt",
+            sep = "\t", header = T)
+
+# Select columns
+
+lgrn_genes <- lgrn %>% dplyr::select(gencode_id, gene) %>%  unique()
+
+# Remove version numbers from gencode ids
+
+lgrn_genes$gene_id <- sub("\\..*", "", lgrn_genes$gencode_id)
+
+# retain only gene id and biotype column
+
+ensembl_biotype_all <- ensembl_biotypes %>% dplyr::select(ensembl_gene_id, gene_biotype) %>%
+  unique()
+
+names(ensembl_biotype_all) <- c("gene_id", "biotype")
+
+# Identify the biotype of lgrn genes
+
+lgrn_gene_biotype <- merge(lgrn_genes, ensembl_biotype_all, by = "gene_id")
+
+lgrn_gene_biotype_few <- lgrn_gene_biotype %>% dplyr::select(gene, biotype) %>%  unique()
+
+# genes that are unannotated with biotype
+
+lgrn_not_annot <- data.frame(gene = setdiff(lgrn_genes$gene, lgrn_gene_biotype$gene)) #54
+
+# query unannotated genes in biomart
+
+lgrn_init_unannot <- getBM(attributes = c("hgnc_symbol","gene_biotype"), 
+                                filters = "hgnc_symbol", 
+                                values = lgrn_not_annot$gene,
+                                mart=ensembl) 
+
+names(lgrn_init_unannot) <- c("gene", "biotype")
+
+lgrn_genes_annotated <- rbind(lgrn_gene_biotype_few, lgrn_init_unannot)
+
+## For supplementary figure 1D
+ 
+lgrn_unannotated <- data.frame(gene = setdiff(lgrn$gene, lgrn_genes_annotated$gene))
+
+lgrn_unannotated$biotype <- "Uncategorized"
+
+lgrn_genes_and_their_biotype <- unique(rbind(lgrn_genes_annotated, lgrn_unannotated))
+
+# write.table(lgrn_genes_and_their_biotype, "../data/lgrn_gene_biotype.txt", sep = "\t", 
+#              quote = F, col.names = T, row.names = F)
+
+
+# find biotype for all GENCODE genes
+# 
+gencode_genes <- fread("../data/gene_reference.bed", sep = "\t", header = F)
+names(gencode_genes) <- c("chr","start","end","gene","gencode_id")
+
+gencode_genes_few <- gencode_genes %>% dplyr::select(gene, gencode_id) %>%  unique()
+
+# Remove version numbers from gencode ids
+# 
+gencode_genes_few$gene_id <- sub("\\..*", "", gencode_genes_few$gencode_id)
+
+gencode_genes_biotype <- merge(gencode_genes_few, ensembl_biotype_all, by = "gene_id")
+
+gencode_genes_biotype_few <- gencode_genes_biotype %>% dplyr::select(gene, biotype) %>%  unique()
+
+## Gencode genes not annotated initially
+## 
+gencode_not_annot <- data.frame(gene = setdiff(gencode_genes_few$gene, gencode_genes_biotype$gene))
+
+# Try to query non-annotated genes again
+# 
+gencode_init_unannot <- getBM(attributes = c("hgnc_symbol","gene_biotype"), 
+                                filters = "hgnc_symbol", 
+                                values = gencode_not_annot$gene,
+                                mart=ensembl)
+
+names(gencode_init_unannot) <- c("gene", "biotype")
+
+gencode_genes_annotated <- rbind(gencode_genes_biotype_few, gencode_init_unannot)
+
+# Find the count of protein_coding genes
+ 
+lgrn_pro_coding <- lgrn_genes_annotated %>% filter(biotype == "protein_coding") %>% unique() # 6249
+
+gencode_pro_coding <- gencode_genes_annotated %>% filter(biotype == "protein_coding") %>% unique() # 19206
+
+# Plot the graph 
+
+library(reshape2)
+
+df <- data.frame(LGRN = c(6249, 1848),
+                 GENCODE = c(19206, 36994),
+                 Category = c("Protein coding", "Others"))
+
+df_melt <- melt(df, id.vars = "Category")
+
+df_melt_prop <- df_melt %>% group_by(variable) %>% 
+  mutate(prop = value/sum(value))
+
+#pdf("../figure1b.pdf", height = 4, width = 4)
+ggplot(df_melt_prop, aes(factor(variable, levels = c("LGRN", "GENCODE")), prop, 
+                         fill = factor(Category, levels = c("Protein coding", "Others")))) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6, alpha = 0.9) +
+  geom_text(aes(label= paste0("N=", value)), position=position_dodge(width=0.6), 
+            vjust=-0.25, size = 3) +
+  labs(x = "", y = "Proportion of genes") +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"), limits = c(0,0.8),
+                     breaks = seq(0,0.8,by=0.10), expand = c(0.01,0)) +
+  scale_fill_manual(values = c("#C4C035", "#186194"), name = "", 
+                  labels = c("Protein coding", "Others"))+
+  theme_classic() +
+  theme(legend.position = c(1,0.5),
+        axis.text = element_text(size = 9),
+        axis.title = element_text(size = 10),
+        legend.text = element_text(size = 7),
+        #legend.title = element_text(size = 8, face = "bold"),
+        axis.line = element_line(size = 0.25, colour = "black"),
+        axis.ticks = element_line(size = 0.25, colour = "black"))
+#dev.off()
+```
+
+
+## Supplementary figure 1D
+```{r}
+
+## Read LGRN file
+
+lgrn <- fread("../results/significant_eqtls_liver_fdr_recalculated.txt",
+              sep = "\t", header = T)
+
+## prop of cis, trans, cis and trans regulated egenes among protein-coding and non-protein-coding genes
+
+gene_type <- fread("../results/lgrn_gene_biotype.txt", 
+                    header = T, sep = "\t")
+
+# remove duplicated incorrect annotation
+
+lgrn_type <- gene_type[!(gene_type$gene == "CYB561D2" & biotype == "lncRNA") & 
+                          !(gene_type$gene == "MAL2" & biotype == "lncRNA"),]
+
+lgrn_type_few <- lgrn_type %>% dplyr::select(gene, biotype) %>%  unique()
+
+# write.table(lgrn_type_few, "../results/lgrn_gene_biotype.txt",
+#             sep = "\t", quote = F, col.names = T, row.names = F)
+
+lgrn_type$biotype_new <- ifelse(lgrn_type$biotype == "protein_coding", "Protein coding", "Others")
+
+lgrn$interaction_type <- gsub("Trans-intrachromosomal", "Trans", lgrn$interaction_type)
+lgrn$interaction_type <- gsub("Trans-interchromosomal", "Trans", lgrn$interaction_type)
+
+gene_reg <- lgrn %>% dplyr::select(gene,interaction_type) %>% group_by(gene) %>% 
+  mutate(reg = paste(sort(unique(interaction_type)), collapse = ",")) %>% 
+  dplyr::select(gene,reg) %>% 
+  unique()
+
+## get a df containing gene, regulation and the biotype
+## 
+gene_data <- merge(lgrn_type, gene_reg, by = "gene") 
+
+gene_data_count <- gene_data %>% group_by(biotype_new, reg) %>% 
+  mutate(reg_count = as.numeric(table(reg)))
+
+gene_data_count_plot <- gene_data_count %>%  dplyr::select(biotype_new, reg, reg_count) %>% 
+  unique() %>% 
+  group_by(biotype_new) %>% 
+  mutate(prop = round(reg_count/sum(reg_count)*100, 2))
+
+gene_data_count_plot$biotype_new <- factor(gene_data_count_plot$biotype_new, 
+                                       levels = c("Protein coding", "Others"))
+
+#pdf("../plots/sup_fig1d.pdf", width = 4.5, height = 4.5)
+ggplot(gene_data_count_plot, aes(biotype_new,prop,fill = reg))+
+  geom_bar(stat = "identity", position = "dodge", width = 0.65) +
+  geom_text(aes(label= paste0("N=", reg_count)), position=position_dodge(width=0.65), 
+            vjust=-0.25, size = 2.5) +
+  labs(x = "", y = "Proportion of LGRN eQTL target genes") +
+  scale_y_continuous(labels = function(x) paste0(x, "%"), limits = c(0,80),
+                     breaks = seq(0,80,by=10), expand = c(0.01,0)) +
+  scale_fill_manual(values = c("#C9BEA9", "#9B8579", "#805230"))+
+  theme_classic() +
+  theme(legend.position = "none",
+        axis.text = element_text(size = 8, colour = "black"),
+        axis.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 8, face = "bold"),
+        axis.line = element_line(size = 0.25),
+        axis.ticks = element_line(size = 0.25))
+#dev.off()
+
+```
+
+## Figure 1C
+```{r}
+
+## Read LGRN data
+
+lgrn <- fread("../results/significant_eqtls_liver_fdr_recalculated.txt", header = T, sep = "\t")
+
+## Read LOUEF data file obtained from gnomAD database
+
+pli_file <-  read.table("../data/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz", header = TRUE, sep="\t",
+                        stringsAsFactors=FALSE)
+
+## add an annotation column
+
+library(tidyverse)
+
+pli_annot_genes <- pli_file %>% dplyr::select(gene, oe_lof_upper) %>% 
+  mutate("LoF_intolerant" = ifelse(oe_lof_upper < 0.35, "Intolerant", "Tolerant")) %>% 
+  na.omit() # omit genes without loeuf score
+
+## Subset gene, interaction_type column 
+
+gene_type <- lgrn %>% dplyr::select(gene, interaction_type) %>% unique() 
+
+gene_type$interaction_type <- gsub("Trans-intrachromosomal", "Trans", gene_type$interaction_type)
+gene_type$interaction_type <- gsub("Trans-interchromosomal", "Trans", gene_type$interaction_type)
+
+gene_type_aggr <- aggregate(interaction_type ~ gene, gene_type, 
+                            function(x) paste(sort(unique(x)), collapse=","))
+
+gene_type_aggr$interaction_type <- gsub("Trans-intrachromosomal", "Trans", gene_type_aggr$interaction_type)
+gene_type_aggr$interaction_type <- gsub("Trans-interchromosomal", "Trans", gene_type_aggr$interaction_type)
+
+## find LOEUF scores for the genes 
+ 
+gene_loeuf_res <- merge(pli_annot_genes, gene_type_aggr, by = "gene")
+
+
+## find the count of genes that are tolerant and intolerant in each interaction type
+
+gene_loeuf_res <-  gene_loeuf_res %>% group_by(interaction_type) %>% 
+  mutate("type_count" = paste0(interaction_type, "  (N=", length(interaction_type), ")"))
+
+##plot the data (figure 1C)
+
+#pdf("../plots/loeuf_analyses_plots/all_chr_loeuf_plot.pdf", width = 5.5, height = 4.5)
+ggplot(gene_loeuf_res, aes(x= oe_lof_upper, color=type_count)) +
+  geom_line(stat="density", size=0.6) +
+  geom_vline(xintercept=0.35, linetype="longdash", color = "red", size = 0.3) +
+  scale_color_viridis(discrete=T, option="viridis", name = "Interaction type") +
+  labs(x= "LOEUF score", y = "Density") + 
+  theme_linedraw() +
+  scale_x_continuous(expand = c(0,0.0), limits = c(0,2)) +
+  scale_y_continuous(expand = c(0,0.0), limits = c(0,1.2), breaks = seq(0,1.2,by=0.2)) +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_line(size = 0.3, colour = "white"),
+        #panel.background = element_rect(fill = "gray95"),
+        panel.border = element_rect(colour = "black", color="black", size=0.2),
+        axis.text = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        legend.position = "bottom") 
+#dev.off()
+```
+
+## Figure 1D and supplementary figure 1E
+```{r}
+
+## Read common SNPs (dbSNP build b151) file
+
+snps <- fread("../data/dbSNP_common_b151.gz", header = F, sep = "\t")
+names(snps) <- c("chr", "start", "end", "rsid", "null", "strand")
+
+snps_chr_rsid <- subset(snps, select = c(chr, rsid))
+
+## Chromosome sizes in bp
+
+size <- c(248956422, 242193529, 198295559, 190214555, 181538259, 170805979, 159345973,
+          145138636, 138394717, 133797422, 135086622, 133275309, 114364328, 107043718,
+          101991189, 90338345, 83257441, 80373285, 58617616, 64444167, 46709983,
+          50818468, 156040895)
+
+chr <- c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11",
+         "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21",
+         "chr22", "chrX")
+
+chr_size <- data.frame(chr, size)
+
+chr_size_mb <- chr_size %>% mutate(size_mb = round(size*0.000001,2)) %>% dplyr::select(chr, size_mb)
+
+## use SNPs on the assembled chromosomes only
+ 
+snps_valid_chr <- snps_chr_rsid[!(nchar(as.character(snps_chr_rsid$chr)) > 5),]
+
+## Get number of snps by chromosome 
+
+all_snp_count <- snps_valid_chr %>% group_by(chr) %>% dplyr::summarise(snps = length(unique(rsid)))
+
+## Remove chromosome M and Y
+ 
+chr_to_remove <- c("chrY", "chrM")
+all_snp_count <- all_snp_count %>% filter(!chr %in% chr_to_remove)
+
+## LGRN
+
+lgrn <- fread("../results/significant_eqtls_liver_fdr_recalculated.txt", header = T, sep = "\t")
+
+## Get number of snps by chromosome from LGRN
+
+lgrn_snp_count <- lgrn %>% dplyr::select(snp,snp_chr) %>% group_by(snp_chr) %>% 
+  dplyr::summarise(eqtls = length(unique(snp)))
+
+names(lgrn_snp_count)[1] <- "chr"
+
+## Get number of genes by chromosome from LGRN
+
+lgrn_gene_count <- lgrn %>% dplyr::select(gene,gene_chr) %>% group_by(gene_chr) %>%
+  dplyr::summarise(egenes = length(unique(gene)))
+
+names(lgrn_gene_count)[1] <- "chr"
+
+## Load gene reference file from GENCODE
+
+gene_ref <- fread("../data/gene_reference_cut.txt", header = F, sep = "\t")
+
+names(gene_ref) <- c("chr", "gene")
+
+gene_ref_count <- gene_ref %>% group_by(chr) %>% dplyr::summarise(genes = length(unique(gene)))
+
+# remove chrM and chrY
+
+gene_ref_numbers_valid <- gene_ref_count[!grepl("chr[MY]", gene_ref_count$chr), ]
+
+library(purrr)
+
+plot_df <- list(all_snp_count, lgrn_snp_count, gene_ref_count, lgrn_gene_count, chr_size_mb) %>% 
+  purrr::reduce(left_join, by = "chr")
+
+plot_df <- plot_df %>% mutate(density = as.integer(snps/size_mb))
+
+# write.table(plot_df, "../data/snp_vs_eqtls.txt", sep = "\t", col.names = T, 
+#             row.names = F, quote = F)
+
+plot_df$chr <- gsub("chr", "", plot_df$chr)
+
+plot_df$chr <- factor(plot_df$chr, levels = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,
+                                              19,20,21,22,"X"))
+
+## plot the data (Figure 1D)
+
+library("ggpubr")
+library(scales)
+#pdf("../plots/figure_1d.pdf", width = 4.5, height = 4.5)
+ggscatter(plot_df, x = "density", y = "eqtls", conf.int.level = 0.95,
+          add = "reg.line", size = 3,
+          conf.int = TRUE, color = "#A7A9AC",
+          label = "chr", repel = F,
+          alpha = 1, fullrange = TRUE,
+          add.params = list(color = "red", fill = "gray87", size = 0.4),
+          font.label = c(7, "plain", "black")) +
+  scale_x_continuous(name = "SNP density per MB (#)", limits = c(3000,5560), 
+                     breaks = seq(3000,5560, by = 500), 
+                     labels = scales::label_number_si(accuracy = 0.1)) +
+  scale_y_continuous(name = "eQTLs (#)", limits = c(1000,45000), 
+                     breaks = seq(3000,45000, by = 10000), 
+                     labels = scales::label_number_si()) +
+  #scale_size_continuous(name = "Total genes (#)", labels = scales::label_number_si(accuracy = 1),
+  #                      range = c(1, 9)) +
+  theme(legend.position = "bottom",
+        axis.line = element_line(size = 0.25),
+        axis.text = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        legend.title=element_text(size=10), 
+        legend.text=element_text(size=8)) +
+  stat_cor(method = "pearson")
+#dev.off()
+
+## Supplementary figure 1E
+
+#pdf("../plots/sup_figure_1f.pdf", width = 4.5, height = 4.5)
+ggscatter(plot_df, x = "genes", y = "eqtls", conf.int.level = 0.95, fullrange = F,
+          add = "reg.line", size = 3,
+          conf.int = TRUE, color = "#A7A9AC",
+          label = "chr", repel = F,
+          alpha = 1, 
+          add.params = list(color = "red", fill = "gray87", size = 0.4),
+          font.label = c(7, "plain", "black")) +
+  scale_x_continuous(name = "Number of genes (#)", limits = c(500,5100), 
+                     breaks = seq(500,5100, by = 500),
+                     labels = scales::label_number_si(accuracy = 0.1)) +
+  scale_y_continuous(name = "Number of eQTLs", limits = c(3000,45000), 
+                     breaks = seq(3000,45000, by = 10000), 
+                     labels = scales::label_number_si()) +
+  #scale_size_continuous(name = "Total genes (#)", labels = scales::label_number_si(accuracy = 1),
+  #                      range = c(1, 9)) +
+  theme(legend.position = "bottom",
+        axis.line = element_line(size = 0.25),
+        axis.text = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        legend.title=element_text(size=10), 
+        legend.text=element_text(size=8)) +
+  stat_cor(method = "pearson")
+#dev.off()
+#
+```
+
+## Figure 2A
+```{r}
+## NAFLD input snps
+ 
+nafld_snps <- fread("../data/nafld_with_ld_snps_input_map.txt", header = T, sep = "\t")
+
+## nafld input snps hg38 position data
+## 
+nafld_snps_hg38 <- fread("../data/nafld_input_snps_hg38_pos.txt", header = T, sep = "\t")
+
+nafld_snps_hg38 <- nafld_snps_hg38 %>% mutate(hg38_pos = paste0(snp_chr,"_",snp_locus)) %>% 
+  dplyr::select(snp, hg38_pos) %>%  unique()
+
+nafld_snps <- merge(nafld_snps, nafld_snps_hg38, by = "snp")
+
+# Read LGRN data (unaffected)
+
+lgrn <- fread("../results/significant_eqtls_liver_fdr_recalculated.txt",
+              header = T, sep = "\t")
+
+## NAFLD SNPs in LGRN network (unaffected)
+## 
+unaffected_res <- lgrn %>% filter(snp %in% nafld_snps$snp) %>% 
+  dplyr::select(snp,gene,log2_aFC,eqtl_pval,adj_pval) %>% 
+  mutate(pairs = paste0(snp,"_",gene)) %>% 
+  unique()
+  
+nu_eqtls <- data.frame(snp = unique(unaffected_res$snp)) #16
+nu_egenes <- data.frame(gene = unique(unaffected_res$gene)) #7
+
+unaffected_eqtls_df <- data.frame(cat = c("eQTLs", "non-eQTLs"),
+                      count = c(16, 723))
+
+unaffected_eqtls_df$prop <- round(unaffected_eqtls_df$count/sum(unaffected_eqtls_df$count),2)
+
+#pdf("../plots/figure3a.pdf", width = 4, height = 4.5)
+ggplot(unaffected_eqtls_df, aes(x= cat, y = prop,
+                        fill = cat))+
+  geom_bar(stat = "identity", width = 0.6) +
+  scale_fill_manual(values = c("#F7941D", "#808285")) +
+  geom_text(aes(label=paste0("N=", count)), position=position_dodge(width=0.6), vjust=-0.25, size = 3) +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"), expand = c(0.01,0.01,0.01,0.01),
+                     limits = c(0,1)) +
+  theme_minimal() +
+  labs(x="", y = "Proportion of NAFLD SNPs", fill= "")+
+  theme(axis.text = element_text(size = 7, colour = "black"),
+        axis.title = element_text(size = 8),
+        legend.text = element_text(size = 7),
+        legend.key = element_rect(size = 0.5, colour = "white"),
+        legend.position = "none")
+#dev.off()
+```
+
+## Figure 2B
+```{r}
+# Read LGRN data (affected)
+
+affected_lgrn <- fread("../results/yoo_data_results.txt", 
+                       header = T, sep = "\t")
+
+affected_lgrn$NAFLD_FDR <- as.numeric(gsub(".E", "e", affected_lgrn$NAFLD_FDR)) 
+affected_lgrn$NAFLD_p <- as.numeric(gsub(".E", "e", affected_lgrn$NAFLD_p)) 
+
+## NAFLD SNPs in affected LGRN
+## 
+affected_res <- affected_lgrn %>% filter(SNP_ID %in% nafld_snps$snp & NAFLD_FDR < 0.05) %>% 
+  dplyr::select(SNP_ID,gene,NAFLD_p,NAFLD_FDR) %>% 
+  mutate(pairs = paste0(SNP_ID,"_",gene)) %>% 
+  unique()
+
+na_eqtls <- data.frame(snp = unique(affected_res$SNP_ID)) #85
+na_egenes <- data.frame(gene = unique(affected_res$gene)) #17
+
+affected_eqtls_df <- data.frame(cat = c("eQTLs", "non-eQTLs"),
+                      count = c(85, 654))
+
+affected_eqtls_df$prop <- round(affected_eqtls_df$count/sum(affected_eqtls_df$count),2)
+
+#pdf("../plots/figure3b.pdf", width = 4, height = 4.5)
+ggplot(affected_eqtls_df, aes(x= cat, y = prop,
+                        fill = cat))+
+  geom_bar(stat = "identity", width = 0.6) +
+  scale_fill_manual(values = c("#F7941D", "#808285")) +
+  geom_text(aes(label=paste0("N=", count)), position=position_dodge(width=0.6), vjust=-0.25, size = 3) +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"), expand = c(0.01,0.01,0.01,0.01),
+                     limits = c(0,1)) +
+  theme_minimal() +
+  labs(x="", y = "Proportion of NAFLD SNPs (%)", fill= "")+
+  theme(axis.text = element_text(size = 7, colour = "black"),
+        axis.title = element_text(size = 8),
+        legend.text = element_text(size = 7),
+        legend.key = element_rect(size = 0.5, colour = "white"),
+        legend.position = "none")
+#dev.off()
+```
+
+## Figure 2C
+```{r}
+
+## Ensembl annotation file
+ 
+ensembl_annotation <- fread("../results/ensembl_gene_biotypes.txt",
+                                sep = "\t",header = T)
+
+## Type of genes in unaffected
+
+unaffected_gene_type <- merge(nu_egenes, ensembl_annotation, by.x = "gene", by.y = "hgnc_symbol") # 2
+
+## Plot the results
+
+unaffected_genes_plot_df <- data.frame(type = c("Protein-coding genes", "Other genes"),
+                 count = c(2, 5))
+unaffected_genes_plot_df$prop <- round(unaffected_genes_plot_df$count/sum(unaffected_genes_plot_df$count),2)
+
+#pdf("../plots/figure3c.pdf", height = 4, width = 4)
+ggplot(unaffected_genes_plot_df, 
+       aes(factor(type, levels = c("Protein-coding genes", "Other genes")), prop, 
+           fill = factor(type, levels = c("Protein-coding genes", "Other genes")))) +
+  geom_bar(stat = "identity", width = 0.6) +
+  geom_text(aes(label= paste0("N=", count)), position=position_dodge(width=0.6), 
+            vjust=-0.25, size = 3) +
+  labs(x = "", 
+  y = paste0("Proportion of target genes of NAFLD-eQTLs", "\n", "within unaffected-LGRN"), 
+  fill = "") +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"), limits = c(0,0.75),
+                     breaks = seq(0,0.75,by=0.10), expand = c(0.01,0)) +
+  scale_fill_manual(values = c("#C4C035", "#186194"))+
+  theme_minimal() +
+  theme(legend.position = "None",
+        axis.text = element_text(size = 9), 
+        axis.title = element_text(size = 10),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 9, face = "bold"))
+#dev.off()
+```
+
+## Figure 2D
+```{r}
+
+## Ensembl annotation file
+
+ensembl_annotation <- fread("../results/ensembl_gene_biotypes.txt",
+                                sep = "\t",header = T)
+
+## Type of genes in affected
+## 
+affected_gene_type <- merge(na_egenes, ensembl_annotation, by.x = "gene", by.y = "hgnc_symbol") # 10
+
+## Plot the results
+## 
+affected_genes_plot_df <- data.frame(type = c("Protein-coding genes", "Other genes"),
+                 count = c(10, 7))
+affected_genes_plot_df$prop <- round(affected_genes_plot_df$count/sum(affected_genes_plot_df$count),2)
+
+#pdf("../plots/figure3d.pdf", height = 4, width = 4)
+ggplot(affected_genes_plot_df, 
+       aes(factor(type, levels = c("Protein-coding genes", "Other genes")), prop, 
+           fill = factor(type, levels = c("Protein-coding genes", "Other genes")))) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_text(aes(label= paste0("N=", count)), position=position_dodge(width=0.8), 
+            vjust=-0.25, size = 3) +
+  labs(x = "", 
+       y = paste0("Proportion of target genes of NAFLD-eQTLs","\n","within diseased-LGRN"), 
+       fill = "") +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"), limits = c(0,0.6),
+                     breaks = seq(0,0.6,by=0.1), expand = c(0.01,0)) +
+  scale_fill_manual(values = c("#C4C035", "#186194"))+
+  theme_minimal() +
+  theme(legend.position = "None",
+        axis.text = element_text(size = 9),
+        axis.title = element_text(size = 10),
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 9, face = "bold"))
+#dev.off()
+```
+
+## Figure 2E
+```{r}
+
+## No of genes overlap between affected and unaffected 
+
+genes_overlap <- list(unaffected = unaffected_res$gene, affected = affected_res$gene)
+
+#pdf("../plots/figure3e.pdf", height = 4, width = 4)
+ggvenn(
+  genes_overlap,
+  fill_color = c("#D1D3D4", "#F3E886"), fill_alpha = 0.8,
+  stroke_size = 0.3, set_name_size = 4, digits = 0,
+  text_size = 3
+  )
+#dev.off()
+```
+
+## Supplementary figure 2A
+```{r}
+
+library(haploR)
+
+## Haploreg analysis of the nafld input SNPs
+## 
+nafld_snps <- fread("../data/nafld_with_ld_snps_input_map.txt", header = T, sep = "\t")
+
+nafld_snps_hg38 <- fread("../data/nafld_input_snps_hg38_pos.txt", header = T, sep = "\t")
+
+nafld_snps_hg38 <- nafld_snps_hg38 %>% mutate(hg38_pos = paste0("chr",snp_chr,"_",snp_locus)) %>% 
+  dplyr::select(snp, hg38_pos) %>%  unique()
+
+nafld_snps <- merge(nafld_snps, nafld_snps_hg38, by = "snp")
+
+
+haplor_res <- queryHaploreg(query = nafld_snps$snp, 
+                          ldThresh = NA,
+                          ldPop = "EUR",
+                          url = "https://pubs.broadinstitute.org/mammals/haploreg/haploreg.php",
+                          verbose = T,
+                          timeout = 1000000)
+
+haplor_res_subset <- haplor_res  %>% dplyr::select(query_snp_rsid, dbSNP_functional_annotation, 
+                                            GENCODE_id, GENCODE_name)
+
+haplor_res_subset$dbSNP_functional_annotation <-
+  str_replace_all(haplor_res_subset$dbSNP_functional_annotation, c("\\." = "Intergenic",
+                                                                   "INT" = "Intronic",
+                                                                   "U3" = "3'-UTR",
+                                                                   "SYN" = "Synonymous",
+                                                                   "NSM" = "Missense",
+                                                                   "U5" = "5'-UTR",
+                                                                   "NSN" = "Nonsense",
+                                                                   "NSF" = "Frameshift"))
+
+nafld_input_haploreg_results <- merge(nafld_snps, haplor_res_subset, by.x = "snp", by.y = "query_snp_rsid")
+
+# separate SNPs with multiple annotations each to a new row
+
+nafld_input_haploreg_results_sep <- nafld_input_haploreg_results %>% 
+  mutate(dbSNP_functional_annotation = strsplit(dbSNP_functional_annotation, ";")) %>%
+  unnest(dbSNP_functional_annotation)
+
+
+# write.table(nafld_input_haploreg_results_sep, "../results/nafld_input_snps_haploreg_results.txt", col.names = T, row.names = F, sep = "\t", quote = F)
+
+## NAFLD input SNPs (N = 739) haploreg results
+
+nafld_haploreg <- fread("../results/nafld_input_snps_haploreg_results.txt", header = T, sep = "\t")
+
+nafld_haploreg <- nafld_haploreg %>% dplyr::select(snp, dbSNP_functional_annotation) %>% unique()
+
+## unaffected eqtl snp annotation
+## 
+unaffected_eqtl_type <- merge(nu_eqtls, nafld_haploreg, by = "snp")
+
+## count number of snps associated with each category
+
+unaffected_eqtl_type_df <- aggregate(snp ~ dbSNP_functional_annotation,
+                        unaffected_eqtl_type, 
+                        function(x) paste(length(unique(x)), collapse = ","))
+
+#No_of_snps <- No_of_snps %>% mutate(prop = (as.numeric(query_snp_rsid)/2083)) %>% 
+#  arrange(desc(as.numeric(query_snp_rsid)))# consequences of snps are different in the isoforms of the genes
+
+unaffected_eqtl_type_df$dbSNP_functional_annotation <-
+  factor(unaffected_eqtl_type_df$dbSNP_functional_annotation,
+         levels = c("Intergenic", "Intronic", "Missense", "3'-UTR", "Synonymous", "5'-UTR", "Nonsense"))
+  
+#pdf("../plots/supfig3a.pdf", width = 4, height = 3.5)
+unaffected_eqtl_type_df %>% mutate(prop = (as.numeric(snp)/16)) %>% 
+  arrange(desc(as.numeric(snp))) %>% 
+  ggplot(aes(x=dbSNP_functional_annotation, y = prop)) +
+  geom_bar(stat="identity", width=0.5, position = "dodge", fill = "lightcyan4") +
+  geom_text(aes(label = paste0("N=", snp)), vjust = -0.5, hjust = 0.4, size = 3,
+            position = position_dodge(width = 0.5)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), 
+                     expand = c(0.01,0.01), limits = c(0, 0.75), 
+                     breaks = seq(0, 0.75, by = 0.1))+
+  labs(fill = "", y = "Proportion of NAFLD-eQTLs in unaffected-LGRN", x = "") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust=1, size = 8),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_text(size = 9),
+        legend.position = c(.9,.9),
+        legend.background = element_blank(),
+        legend.text = element_text(size = 5),
+        legend.key.size = unit(0.3, "cm"))
+#dev.off()
+
+```
+
+## Supplementary figure 2B
+```{r}
+## Nafld yoo et al results eqtl type plot
+
+affected_eqtl_type <- merge(na_eqtls, nafld_haploreg, by = "snp")
+
+# Data manipulation to plot the results
+
+affected_eqtl_type_df <- aggregate(snp ~ dbSNP_functional_annotation,
+                        affected_eqtl_type, 
+                        function(x) paste(length(unique(x)), collapse = ","))
+
+#No_of_snps <- No_of_snps %>% mutate(prop = (as.numeric(query_snp_rsid)/2083)) %>% 
+#  arrange(desc(as.numeric(query_snp_rsid)))# consequences of snps are different in the isoforms of the genes
+
+affected_eqtl_type_df$dbSNP_functional_annotation <-
+  factor(affected_eqtl_type_df$dbSNP_functional_annotation,
+         levels = c("Intergenic", "Intronic", "Missense", "3'-UTR", "Synonymous", "5'-UTR", "Nonsense"))
+  
+#pdf("../plots/supfig3b.pdf", width = 4, height = 3.5)
+affected_eqtl_type_df %>% mutate(prop = (as.numeric(snp)/85)) %>% 
+  arrange(desc(as.numeric(snp))) %>% 
+  ggplot(aes(x=dbSNP_functional_annotation, y = prop)) +
+  geom_bar(stat="identity", width=0.5, position = "dodge", fill = "lightcyan4") +
+  geom_text(aes(label = paste0("N=", snp)), vjust = -0.5, hjust = 0.4, size = 3,
+            position = position_dodge(width = 0.5)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), expand = c(0.01,0.01), limits = c(0, 0.52), breaks = seq(0, 0.52, by = 0.1))+
+  labs(fill = "", y = "Proportion of NAFLD-eQTLs in diseased-LGRN", x = "") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust=1, size = 8),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_text(size = 9),
+        legend.position = c(.9,.9),
+        legend.background = element_blank(),
+        legend.text = element_text(size = 5),
+        legend.key.size = unit(0.3, "cm"))
+#dev.off()
+```
+
+## Supplementary figure 2C
+```{r}
+
+## Number of NAFLD SNPs (N = 739) overlapped with enhancer peaks in liver cells
+ 
+nafld_enhancers <- fread("../results/nafld_input_739_enhancer_result.txt", sep = "\t", header = T)
+
+nafld_snps$enhancer <- ifelse(nafld_snps$snp %in% nafld_enhancers$snp, "Enhancers", "Non-enhancers")
+
+## Check how many unaffected data eqtls mark enhancer regions
+ 
+unaffected_enhan_eqtls <- nafld_snps %>% filter(snp %in% nu_eqtls$snp & enhancer == "Enhancers") %>%
+  unique() #3
+
+unaffected_enhan_df <- data.frame(cat = c("Enhancers", "Non-enhancers"),
+                      count = c(3, 13))
+
+unaffected_enhan_df$prop <- round(unaffected_enhan_df$count/sum(unaffected_enhan_df$count),2)
+
+#pdf("../plots/supp_fig3c.pdf", width = 4, height = 4.5)
+ggplot(unaffected_enhan_df, aes(x= cat, y = prop,
+                        fill = cat))+
+  geom_bar(stat = "identity", width = 0.6) +
+  scale_fill_manual(values = c("#6FC067", "#04783D")) +
+  geom_text(aes(label=paste0("N=", count)), position=position_dodge(width=0.6), vjust=-0.25, size = 3) +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"), expand = c(0.01,0.01,0.01,0.01),
+                     limits = c(0,0.9), breaks = seq(0, 0.9, by= 0.1)) +
+  theme_minimal() +
+  labs(x="", y = "Proportion of NAFLD-eQTLs in unaffected-LGRN", fill= "")+
+  theme(axis.text = element_text(size = 8),
+        axis.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
+        legend.key = element_rect(size = 0.5, colour = "white"),
+        legend.position = "none")
+#dev.off()
+```
+
+## Supplementary figure 2D
+```{r}
+## Check how many affected data eqtls mark enhancer regions
+
+affected_enhan_eqtls <- nafld_snps %>% filter(snp %in% na_eqtls$snp & enhancer == "Enhancers") %>%
+  unique() #23
+
+affected_enhan_df <- data.frame(cat = c("Enhancers", "Non-enhancers"),
+                      count = c(23, 62))
+
+affected_enhan_df$prop <- round(affected_enhan_df$count/sum(affected_enhan_df$count),2)
+
+#pdf("../plots/suppfig3d.pdf", width = 4, height = 4.5)
+ggplot(affected_enhan_df, aes(x= cat, y = prop,
+                        fill = cat))+
+  geom_bar(stat = "identity", width = 0.8) +
+  scale_fill_manual(values = c("#6FC067", "#04783D")) +
+  geom_text(aes(label=paste0("N=", count)), position=position_dodge(width=0.8), vjust=-0.25, size = 3) +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"), expand = c(0.01,0.01,0.01,0.01),
+                     limits = c(0,0.8), breaks = seq(0, 0.8, by= 0.1)) +
+  theme_minimal() +
+  labs(x="", y = "Proportion of NAFLD-eQTLs in diseased-LGRN", fill= "")+
+  theme(axis.text = element_text(size = 8),
+        axis.title = element_text(size = 9),
+        legend.text = element_text(size = 7),
+        #legend.key = element_rect(size = 0.5, colour = "white"),
+        legend.position = "none")
+#dev.off()
+```
+
+## Figure 3A
+```{r}
+
+# NAFLD-candidate gene list
+
+dg <- fread("../data/nafld_spectrum_genes", header = F)
+
+
+# Read LGRN data
+
+lgrn <- fread("../results/significant_eqtls_liver_fdr_recalculated.txt",
+              header = T, sep = "\t")
+
+
+# check if NAFLD-candidate genes are present in LGRN
+# 
+dg_in_lgrn <- lgrn %>% filter(gene %in% dg$V1) %>% 
+  dplyr::select(snp, gene, log2_aFC, log2_aFC_lower, log2_aFC_upper, interaction_type) %>% 
+  unique()
+
+dg_in_lgrn_genes_list <- dg_in_lgrn %>% dplyr::select(gene) %>% unique() #13
+
+## Plot the data
+## 
+lgrn_df <- data.frame(Category = c("Have eQTLs", "Have no eQTLs"),
+                 count = c(13, 18))
+
+lgrn_df_prop <- lgrn_df %>%
+  mutate(prop = round((count/sum(count)), 2))
+
+lgrn_df_prop$Category <- factor(lgrn_df_prop$Category, levels = c("Have eQTLs", "Have no eQTLs"))
+
+#pdf("../plots/figure4a.pdf",width = 3, height = 3.5)
+ggplot(lgrn_df_prop, aes(Category, prop, fill = Category)) +
+  geom_bar(stat = "identity", width = 0.6) +
+  scale_fill_manual(values = c("#F79520", "#808285")) +
+  geom_text(aes(label=paste0("N=", count)), 
+            position=position_stack(vjust=1.02), size = 3) +
+  scale_y_continuous(labels = function(x) paste0(x*100, "%")) +
+  theme_minimal() +
+  labs(x="", y = "Proportion of the NAFLD candidate genes", fill= "")+
+  theme(axis.text = element_text(size = 9),
+        axis.title = element_text(size = 10),
+        legend.position = "none")
+#dev.off()
+
+```
+
+## Figure 3B
+```{r}
+
+## Probabilty of finding random gene (all gencode genes) ocurance in the codes3d liver network
+## source code location: ../scripts/test_random_gene_occurance_in_liver_codes3d.py
+## 
+
+# plot the results
+
+
+rand <- read.delim("../results/random_gene_occurance_values_codes3d.txt", header = T)
+
+#pdf("../plots/figure4b.pdf", width = 5, height = 4)
+ggplot(data=rand, aes(overlaps)) + 
+  geom_vline(data=rand, aes(xintercept = 13), colour="black", linetype="dashed") +
+  geom_histogram(breaks=seq(0, 15, by=0.99), 
+               col="red",
+               fill="orange",
+               alpha = .2,
+               bins=5) +
+  scale_x_continuous(name = "Count of random genes identified within the LGRN", expand = c(0.02,0), 
+                     limits = c(0,15),
+                     breaks = seq(0,15,by = 1)) +
+  scale_y_continuous(name = "Frequency", expand = c(0.02,0), limits = c(0,2200),
+                     breaks= seq(0,2200, by = 200)) +
+  theme_bw()+
+  theme(panel.background = element_blank(),
+        panel.grid = element_blank())
+#dev.off()
+
+```
+
+## Figure 4A
+```{r}
+
+# Read pathway analysis results
+
+kegg_plot <- fread("../results/risk_genes_partners_in_kegg_pathways.txt",
+                   header = T, sep = "\t")
+
+#pdf("../../plots/figure5a.pdf", width = 5, height = 3.5)
+ggplot(kegg_plot, aes(-log2(p_value), term_name)) +
+  geom_point(aes(size = intersection_size, fill = -log2(p_value)), shape = 21, stroke = 0.1) +
+  #geom_text(aes(label=intersection_size, vjust=0.4, hjust=-0.09), size = 2) +
+  labs(x="-log2(p-value)", y = "", size = "No of genes") +
+  scale_fill_continuous(low = "yellow", high = "pink4", limits = c(0,10), breaks = seq(0,10, by = 2)) +
+  scale_y_discrete(labels = function(y) str_wrap(y, width = 30)) +
+  scale_x_continuous(expand = c(0.0,0.0), limits = c(4,9), breaks = seq(4,9,by=1),
+                     labels = function(x) paste0(x)) +
+  theme_minimal()+
+  theme(axis.text.y = element_text(size = 7, lineheight = 0.8),
+        axis.text.x = element_text(size = 7),
+        axis.title.x = element_text(size = 8),
+        legend.position = "bottom")
+#dev.off()
+
+```
+
+## Figure 4B
+```{r}
+# trait enrichment results
+
+d13_neighbor_gwas_enrich <- fread("../results/dg13_1stneighbors_gwassignificant_enrichment.txt", 
+                                  header = T, sep = "\t")
+
+#pdf("../../plots/figure5b.pdf", width = 5, height = 6)
+d13_neighbor_gwas_enrich %>% top_n(-30, adj_pval) %>% 
+  ggplot(aes(-log(adj_pval), trait)) +
+  geom_point(aes(color = -log(adj_pval), size = trait_eqtls)) +
+  #geom_text(aes(label=intersection_size, vjust=0.4, hjust=-0.09), size = 2.2) +
+  labs(x="-log10(adj-pvalue)", y = "") +
+  #scale_fill_continuous(low = "yellow", high = "pink4", limits = c(0,3), breaks = seq(0,3, by = 1)) +
+  scale_y_discrete(labels = function(y) str_wrap(y, width = 30)) +
+  scale_x_continuous(expand = c(0.0,0.0), limits = c(0,30), breaks = seq(0,30,by=10),
+                     labels = function(x) paste0(x)) +
+  scale_size_continuous(limits = c(0,15.5), breaks = seq(0,15.5,by=3)) +
+  theme_minimal()+
+  theme(axis.text.y = element_text(size = 7, lineheight = 0.8),
+        axis.text.x = element_text(size = 7),
+        axis.title.x = element_text(size = 8),
+        legend.position = "bottom")
+#dev.off()
+```
+
+## Figure 5
+```{r}
+# all genes combined analysis (genes from unaffected lgrn only, affected lgrn only and shared except HLA)
+# 
+all_res <- fread("../results/all_genes_except_hla_significant_enrichment.txt", header = T, sep = "\t")
+
+#pdf("../../plots/figure6.pdf", width = 6, height = 7)
+all_res  %>% 
+  ggplot(aes(-log2(adj_pval),trait))+
+  geom_point(aes(size = trait_eqtls, fill = -log2(adj_pval)), shape = 21, stroke = 0.1)+
+  scale_y_discrete(labels = function(y) str_wrap(y, width = 55), name = "GWAS traits") +
+  scale_x_continuous(expand = c(0.0,0.0), limits = c(0,60), breaks = seq(0,60,by=10)) +
+  scale_size_continuous(limits = c(0,16), breaks = seq(0,16,by=3)) +
+  scale_fill_gradient(low = "lightgreen", high = "darkgreen") +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 7, lineheight = 0.8),
+        axis.text.x = element_text(size = 7, hjust=1),
+        axis.title.x = element_text(size = 8))
+#dev.off()
+```

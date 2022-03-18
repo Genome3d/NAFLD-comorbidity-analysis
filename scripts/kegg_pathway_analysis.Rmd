@@ -1,0 +1,130 @@
+---
+title: "kegg_pathway_analysis"
+author: "Sreemol Gokuladhas"
+date: "23/11/2021"
+output: html_document
+---
+
+```{r}
+## read lgrn network
+
+lgrn <- fread("../results/significant_eqtls_liver_fdr_recalculated.txt",
+              header = T, sep = "\t")
+
+## NAFLD-candidate genes
+ 
+dg <- fread("../data/nafld_spectrum_genes", header = F)
+
+## NAFLD-candidate genes in lgrn
+
+dg_in_lgrn <- lgrn %>% filter(gene %in% dg$V1) %>% 
+  dplyr::select(gene) %>% 
+  unique()
+
+## Find the gene ID's of the 13 dg
+## 
+library(biomaRt)
+#listEnsemblArchives()
+ensembl <- useMart("ensembl", 
+                   host = "https://may2021.archive.ensembl.org",
+                   dataset = "hsapiens_gene_ensembl")
+
+dg_gene_id <- getBM(attributes=c("hgnc_symbol","ensembl_gene_id"),
+                               filters = "hgnc_symbol",
+                               values = dg_in_codes$gene, mart = ensembl)
+
+# write.table(dg_gene_id, "../results/risk_genes_in_lgrn_symbol_from_ensembl.txt", sep = "\t", col.names = T, row.names = F, quote = F)
+
+dg_gene_id <- fread("../results/risk_genes_in_lgrn_symbol_from_ensembl.txt", sep = "\t", header = T)
+
+## There are multiple gene IDs for MBOAT7. Remove all but the correct one
+## 
+dg_gene_id_symbol <- dg_gene_id %>% dplyr::rename(id = ensembl_gene_id, gene = hgnc_symbol) %>% 
+  filter(!gene == "MBOAT7") %>% 
+  add_row(id = "ENSG00000125505", gene = "MBOAT7", .after = 13) %>% 
+  unique()
+
+# Unique nodes in the liver-ppi with their gene symbols
+
+ppi_symbols_map <- fread("../results/simplified_liver_ppi_network_map.txt",
+                       header = T, sep = "\t")
+
+## Select the gene IDs from dg input that are present in the liver-specific ppi
+ 
+dg_in_ppi <- ppi_symbols_map %>% filter(symbol %in% dg_gene_id_symbol$gene) %>%  unique()
+
+## Liver ppi network
+
+ppi <- fread("../results/simplified_liver_ppi_network_edges.txt", 
+             header = T, sep = "\t")
+
+library(igraph)
+
+liver_G <- graph_from_data_frame(ppi, directed = F)
+
+# Convert a vertex sequence to an ordinary vector
+V(liver_G)$id <- as_ids(V(liver_G))
+
+# select the nodes from liver_G having the dg of interest
+dg_in_ppi_v <- V(liver_G)[id %in% dg_in_ppi$id]
+
+# get their network neighborhood 
+dg_in_ppi_n <- ego(liver_G, order=1, nodes = dg_in_ppi_v, mindist = 0)
+
+# turn the returned list of igraph.vs objects into a graph
+dg_in_ppi_g <- induced_subgraph(liver_G,unlist(dg_in_ppi_n))
+
+dg13_in_codes_1st_neighbors <- as_data_frame(dg_in_ppi_g, what = "edges")
+
+# write.table(dg13_in_codes_1st_neighbors, 
+#             "../results/dg13_in_codes_1st_neighbors_subgraph.txt",
+#             sep = "\t",col.names = T,row.names = F,quote = F)
+# 
+# dg13_in_codes_1st_neighbors_nodes <- as_data_frame(dg_in_ppi_g, what = "vertices")
+# 
+# write.table(dg13_in_codes_1st_neighbors_nodes$id, 
+#             "../results/dg13_in_codes_1st_neighbors_vertices.txt",
+#             sep = "\t",col.names = F,row.names = F,quote = F)
+
+            
+## Neighbors of 13 genes present in the ppi
+
+dg13_neigh <- fread("../results/dg13_in_codes_1st_neighbors_vertices.txt", sep = "\t", header = F) %>%  dplyr::rename(id = V1)
+
+## exclude disease genes and keep only their partners
+ 
+dg13_partner <- dg13_neigh %>% filter(!id %in% dg_in_ppi$id) %>% unique() #111
+
+## get the gene symbols
+
+ppi_symbols_map <- fread("../results/simplified_liver_ppi_network_map.txt",
+                       header = T, sep = "\t")
+
+dg13_partner_symbol <- ppi_symbols_map %>% filter(id %in% dg13_partner$id) %>%  unique() #111
+
+# combine disease genes in PPI and their 1st neighbors
+# 
+to_gost <- rbind(dg_in_ppi, dg13_partner_symbol)
+
+library(gprofiler2)
+
+dg13_partner_kegg <- gost(query = unique(to_gost$symbol),
+                               organism = "hsapiens",
+                               exclude_iea = F,
+                               ordered_query = F,
+                               significant = T,
+                               measure_underrepresentation = F,
+                               evcodes = T,
+                               user_threshold = 0.05,
+                               correction_method = "fdr",
+                               sources = c("KEGG"),
+                               domain_scope = "annotated")
+
+dg13_partner_kegg_head <- head(dg13_partner_kegg$result, 100000) %>% dplyr::filter(source == "KEGG")
+
+dg13_partner_kegg_head_tofile <- apply(dg13_partner_kegg_head,2,as.character)
+
+# write.table(dg13_partner_kegg_head_tofile, "../results/risk_genes_partners_in_kegg_pathways.txt", col.names = T, row.names = F, quote = F, sep = "\t")
+
+```
+
