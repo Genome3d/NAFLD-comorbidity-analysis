@@ -1,0 +1,2 @@
+results/significant_eqtls_liver_fdr_recalculated.txt filter=lfs diff=lfs merge=lfs -text
+data/dbSNP_common_b151.gz filter=lfs diff=lfs merge=lfs -text
